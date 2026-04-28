@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a6bd8" />
+  <meta name="description" content="Bag weight calculator: full bags, rounded extra, and total." />
+  <title>Bag calculator</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: rgba(255, 255, 255, 0.08);
+      --text: #f2f5f9;
+      --muted: #9aa5b1;
+      --accent: #2d9cf0;
+      --accent-dim: #1a6fc4;
+      --radius: 16px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font);
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 50% -20%, #1a3a5c 0%, var(--bg) 55%);
+      padding: max(20px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+    }
+    .wrap { max-width: 420px; margin: 0 auto; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
+    .logo {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: linear-gradient(145deg, #4ec4f0, #1a6fc4);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 2rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    }
+    label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 8px; }
+    .row { display: flex; gap: 10px; align-items: stretch; margin-bottom: 18px; }
+    input[type="text"], input[type="number"], select {
+      font: inherit;
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      flex: 1;
+      min-width: 0;
+    }
+    input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    select { flex: 0 0 auto; min-width: 88px; }
+    button.primary {
+      width: 100%;
+      font: inherit; font-weight: 600; font-size: 1rem;
+      color: #fff;
+      background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+      box-shadow: 0 4px 16px rgba(45, 156, 240, .35);
+    }
+    button.primary:active { transform: scale(0.98); }
+    .err { color: #ff8a8a; font-size: 0.9rem; margin-top: 12px; }
+    .result {
+      margin-top: 22px;
+      padding: 18px;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.1);
+      backdrop-filter: blur(12px);
+    }
+    .result h2 { font-size: 1rem; margin: 0 0 14px; }
+    .result dl { margin: 0; display: grid; gap: 10px; }
+    .result dt { color: var(--muted); font-size: 0.85rem; margin: 0; }
+    .result dd { margin: 0; font-size: 1.35rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+    footer { margin-top: 28px; font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #e8eef5;
+        --card: rgba(255, 255, 255, 0.85);
+        --text: #1a2332;
+        --muted: #5c6b7a;
+      }
+      body { background: linear-gradient(180deg, #d4e4f5 0%, #e8eef5 40%); }
+      input, select { border-color: rgba(0,0,0,.1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo" aria-hidden="true">📦</div>
+    <h1>Bag calculator</h1>
+    <p class="sub">Enter bag size and how much material you need. Results match the same math as the iOS app (kg ↔ lb uses 0.45359237).</p>
+
+    <form id="form" novalidate>
+      <label for="bagW">Each bag</label>
+      <div class="row">
+        <input id="bagW" name="bagW" type="text" inputmode="decimal" placeholder="e.g. 25" value="25" autocomplete="off" />
+        <select id="bagUnit" name="bagUnit" aria-label="Bag unit">
+          <option value="lb" selected>lb</option>
+          <option value="kg">kg</option>
+        </select>
+      </div>
+
+      <label for="needW">Material you need</label>
+      <div class="row">
+        <input id="needW" name="needW" type="text" inputmode="decimal" placeholder="e.g. 100" value="100" autocomplete="off" />
+        <select id="needUnit" name="needUnit" aria-label="Needed unit">
+          <option value="kg" selected>kg</option>
+          <option value="lb">lb</option>
+        </select>
+      </div>
+
+      <button type="submit" class="primary">Calculate</button>
+    </form>
+    <div id="err" class="err" hidden></div>
+    <div id="out" class="result" hidden>
+      <h2>Result</h2>
+      <dl>
+        <dt>Full bags</dt>
+        <dd id="bags">—</dd>
+        <dt>Extra (rounded)</dt>
+        <dd id="leftover">—</dd>
+        <dt>Total with bags + extra</dt>
+        <dd id="final">—</dd>
+      </dl>
+    </div>
+
+    <footer>
+      On iPhone: Safari → Share → <strong>Add to Home Screen</strong> for a shortcut that opens like an app.
+      Host this folder with <strong>GitHub Pages</strong> (Settings → Pages → branch <code>main</code>, folder <code>/docs</code>).
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const KG_PER_LB = 0.45359237;
+
+      function parseNum(s) {
+        const t = String(s).trim().replace(",", ".");
+        if (t === "") return NaN;
+        return Number(t);
+      }
+
+      function toKg(value, unit) {
+        return unit === "kg" ? value : value * KG_PER_LB;
+      }
+
+      function fromKg(kg, unit) {
+        return unit === "kg" ? kg : kg / KG_PER_LB;
+      }
+
+      function calculate(bagWeight, bagUnit, neededWeight, neededUnit) {
+        if (bagWeight <= 0 || neededWeight < 0) return null;
+        const bagKg = toKg(bagWeight, bagUnit);
+        const targetKg = toKg(neededWeight, neededUnit);
+        const bagsExact = targetKg / bagKg;
+        const fullBags = Math.floor(bagsExact + 1e-9);
+        const weightFromBagsKg = fullBags * bagKg;
+        const leftoverKg = Math.max(0, targetKg - weightFromBagsKg);
+        const leftoverInNeeded = fromKg(leftoverKg, neededUnit);
+        const leftoverRounded = Math.round(leftoverInNeeded);
+        const roundedLeftoverKg = toKg(leftoverRounded, neededUnit);
+        const finalKg = weightFromBagsKg + roundedLeftoverKg;
+        const finalInNeeded = fromKg(finalKg, neededUnit);
+        return {
+          fullBags,
+          leftoverRounded,
+          unit: neededUnit,
+          finalTotal: finalInNeeded
+        };
+      }
+
+      function stripTrailingZeros(s) {
+        let out = s;
+        while (out.endsWith("0") && out.includes(".")) out = out.slice(0, -1);
+        if (out.endsWith(".")) out = out.slice(0, -1);
+        return out;
+      }
+
+      function formatFinal(x) {
+        return stripTrailingZeros(x.toFixed(4));
+      }
+
+      function unitLabel(u) {
+        return u === "kg" ? "kg" : "lb";
+      }
+
+      const form = document.getElementById("form");
+      const errEl = document.getElementById("err");
+      const outEl = document.getElementById("out");
+      const bagsEl = document.getElementById("bags");
+      const leftoverEl = document.getElementById("leftover");
+      const finalEl = document.getElementById("final");
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        errEl.hidden = true;
+        outEl.hidden = true;
+
+        const bagW = parseNum(document.getElementById("bagW").value);
+        const needW = parseNum(document.getElementById("needW").value);
+        const bagUnit = document.getElementById("bagUnit").value;
+        const needUnit = document.getElementById("needUnit").value;
+
+        if (Number.isNaN(bagW) || Number.isNaN(needW)) {
+          errEl.textContent = "Enter valid numbers for both weights.";
+          errEl.hidden = false;
+          return;
+        }
+
+        const r = calculate(bagW, bagUnit, needW, needUnit);
+        if (!r) {
+          errEl.textContent = "Bag weight must be greater than zero.";
+          errEl.hidden = false;
+          return;
+        }
+
+        bagsEl.textContent = String(r.fullBags);
+        leftoverEl.textContent = formatFinal(r.leftoverRounded) + " " + unitLabel(r.unit);
+        finalEl.textContent = formatFinal(r.finalTotal) + " " + unitLabel(r.unit);
+        outEl.hidden = false;
+      });
+    })();
+  </script>
+</body>
+</html>
